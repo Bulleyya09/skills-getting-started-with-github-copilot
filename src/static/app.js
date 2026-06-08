@@ -20,7 +20,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
         const participantsHtml = details.participants.length > 0
-          ? `<ul class="participants-list">${details.participants.map(email => `<li>${email}</li>`).join("")}</ul>`
+          ? `<ul class="participants-list">${details.participants.map(email => `
+              <li>
+                <span class="participant-email">${email}</span>
+                <button class="remove-participant" data-activity="${encodeURIComponent(name)}" data-email="${encodeURIComponent(email)}" title="Remove participant">&times;</button>
+              </li>
+            `).join("")}</ul>`
           : `<p class="participants-empty">No registered participants yet.</p>`;
 
         activityCard.innerHTML = `
@@ -35,6 +40,45 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+        // Attach handlers for remove buttons
+        activityCard.querySelectorAll('.remove-participant').forEach((btn) => {
+          btn.addEventListener('click', async (e) => {
+            const encodedActivity = btn.dataset.activity;
+            const encodedEmail = btn.dataset.email;
+            const activityName = decodeURIComponent(encodedActivity);
+            const email = decodeURIComponent(encodedEmail);
+
+            try {
+              const resp = await fetch(`/activities/${encodeURIComponent(activityName)}/participants?email=${encodeURIComponent(email)}`, { method: 'DELETE' });
+              const result = await resp.json();
+
+              if (resp.ok) {
+                messageDiv.textContent = result.message;
+                messageDiv.className = 'success';
+                messageDiv.classList.remove('hidden');
+                // Refresh activities to reflect change
+                fetchActivities();
+              } else {
+                messageDiv.textContent = result.detail || 'Failed to remove participant';
+                messageDiv.className = 'error';
+                messageDiv.classList.remove('hidden');
+              }
+
+              setTimeout(() => {
+                messageDiv.classList.add('hidden');
+              }, 5000);
+            } catch (err) {
+              console.error('Error removing participant:', err);
+              messageDiv.textContent = 'Error removing participant.';
+              messageDiv.className = 'error';
+              messageDiv.classList.remove('hidden');
+              setTimeout(() => {
+                messageDiv.classList.add('hidden');
+              }, 5000);
+            }
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
